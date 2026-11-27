@@ -6,7 +6,6 @@
   <style>
     body { cursor: none; background: #000; overflow: hidden; margin: 0; }
     
-    /* Force video to cover everything else */
     video { 
       width: 100vw; 
       height: 100vh; 
@@ -14,7 +13,7 @@
       position: absolute; 
       top: 0; 
       left: 0; 
-      z-index: 99; 
+      z-index: 9999; /* Force video to the absolute top layer */
       background: #000;
     }
 
@@ -65,6 +64,9 @@
     let localBackup = false;
     let localTarget = null;
     let timerInterval = null;
+    
+    // THE MASTER SWITCH: Once this is true, the server and keyboard cannot touch the screen.
+    let videoIsPlaying = false; 
 
     videoFile.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
@@ -85,14 +87,14 @@
 
     syncClock().then(() => {
       connectSSE('screen', (s) => {
+        // IF THE VIDEO IS PLAYING, IGNORE THE SERVER COMPLETELY.
+        if (videoIsPlaying) return; 
+
         currentState = s;
         if (isArmed && !localBackup) {
           if (s.phase === 'running') {
-            // Only show the timer if the video hasn't started
-            if (video.classList.contains('hidden')) {
-              timerOverlay.classList.remove('hidden');
-              timerOverlay.style.display = 'flex';
-            }
+            timerOverlay.classList.remove('hidden');
+            timerOverlay.style.display = 'flex';
             video.classList.add('hidden');
             video.pause();
             if (!timerInterval) startTimerLoop();
@@ -108,7 +110,7 @@
     function startTimerLoop() {
       if (timerInterval) clearInterval(timerInterval);
       timerInterval = setInterval(() => {
-        if (!isArmed) return;
+        if (!isArmed || videoIsPlaying) return; // Stop counting if video is playing
 
         if (localBackup && localTarget) {
           const remaining = localTarget - Date.now();
@@ -139,28 +141,30 @@
     }
 
     function playTrailer() {
-      if (!video.classList.contains('hidden')) return;
+      if (videoIsPlaying) return;
       
-      // 1. Kill the timer loop completely
+      // FLIP THE MASTER SWITCH
+      videoIsPlaying = true;
+
+      // Kill the timer
       if (timerInterval) {
         clearInterval(timerInterval);
         timerInterval = null;
       }
 
-      // 2. DESTROY the timer overlay from the page forever
+      // Destroy the timer overlay completely
       if (timerOverlay) {
         timerOverlay.remove(); 
       }
       
-      // 3. Show the video
+      // Show the video
       video.classList.remove('hidden');
       video.style.display = 'block';
       
       video.play().catch(() => {
-        // If autoplay is blocked by the browser, show a generic click prompt
         const prompt = document.createElement('div');
         prompt.className = 'overlay';
-        prompt.innerHTML = '<h1 style="color: white; z-index: 100; position: absolute;">Click anywhere to play!</h1>';
+        prompt.innerHTML = '<h1 style="color: white; z-index: 10000; position: absolute;">Click anywhere to play!</h1>';
         document.body.appendChild(prompt);
         
         document.addEventListener('click', () => { 
@@ -170,11 +174,13 @@
       });
     }
 
+    // ONLY listen to keys if video is NOT playing
     document.addEventListener('keydown', (e) => {
+      if (videoIsPlaying) return; 
+
       if (e.key.toLowerCase() === 's' && isArmed) {
         localBackup = true;
         localTarget = Date.now() + 30000;
-        // Only show timer if it hasn't been destroyed
         if (timerOverlay && document.body.contains(timerOverlay)) {
           timerOverlay.classList.remove('hidden');
           timerOverlay.style.display = 'flex';
