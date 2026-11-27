@@ -6,7 +6,6 @@
   <style>
     body { cursor: none; background: #000; overflow: hidden; margin: 0; }
     
-    /* Force video to cover everything else */
     video { 
       width: 100vw; 
       height: 100vh; 
@@ -64,6 +63,7 @@
     let isArmed = false;
     let localBackup = false;
     let localTarget = null;
+    let timerInterval = null; // <-- NEW: Keep track of the interval
 
     videoFile.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
@@ -79,6 +79,7 @@
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(()=>{});
       }
+      startTimerLoop(); // <-- Start the loop here
     });
 
     syncClock().then(() => {
@@ -90,6 +91,7 @@
             timerOverlay.style.display = 'flex';
             video.classList.add('hidden');
             video.pause();
+            if (!timerInterval) startTimerLoop(); // Restart loop if it was stopped
           } else {
             timerOverlay.classList.add('hidden');
             video.classList.add('hidden');
@@ -99,44 +101,52 @@
       });
     });
 
-    setInterval(() => {
-      if (!isArmed) return;
+    function startTimerLoop() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        if (!isArmed) return;
 
-      if (localBackup && localTarget) {
-        const remaining = localTarget - Date.now();
-        if (remaining <= 0) {
-          playTrailer();
-          localBackup = false;
-          localTarget = null;
-        } else {
-          timerEl.textContent = formatTime(remaining);
+        if (localBackup && localTarget) {
+          const remaining = localTarget - Date.now();
+          if (remaining <= 0) {
+            playTrailer();
+            localBackup = false;
+            localTarget = null;
+          } else {
+            timerEl.textContent = formatTime(remaining);
+          }
+          return;
         }
-        return;
-      }
 
-      if (currentState && currentState.phase === 'running') {
-        const remaining = currentState.target - getServerNow();
-        if (remaining <= 0) {
-          playTrailer();
-        } else if (video.classList.contains('hidden')) {
-          timerEl.textContent = formatTime(remaining);
+        if (currentState && currentState.phase === 'running') {
+          const remaining = currentState.target - getServerNow();
+          if (remaining <= 0) {
+            playTrailer();
+          } else if (video.classList.contains('hidden')) {
+            timerEl.textContent = formatTime(remaining);
+          }
         }
-      }
-    }, 100);
+      }, 100);
+    }
 
     function playTrailer() {
       if (!video.classList.contains('hidden')) return;
       
-      // Force the timer to completely disappear
+      // 1. Kill the timer loop completely so it cannot repaint
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+
+      // 2. Hide the overlay completely
       timerOverlay.classList.add('hidden');
       timerOverlay.style.display = 'none'; 
       
-      // Show the video on top
+      // 3. Show the video
       video.classList.remove('hidden');
       video.style.display = 'block';
       
       video.play().catch(() => {
-        // If autoplay is blocked, show the click to play message
         screenStatus.textContent = "Click anywhere to play!";
         timerEl.classList.add('hidden');
         timerOverlay.classList.remove('hidden');
@@ -157,6 +167,7 @@
         timerOverlay.style.display = 'flex';
         video.classList.add('hidden');
         video.pause();
+        startTimerLoop();
       }
       if (e.key.toLowerCase() === 'c') {
         localBackup = false;
