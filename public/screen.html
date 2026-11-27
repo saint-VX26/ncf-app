@@ -19,7 +19,6 @@
       z-index: 10; transition: background 0.3s;
     }
     
-    /* Make the red pulse slightly quicker to match the ticking */
     .warning-pulse {
       background: rgba(150, 0, 0, 0.5) !important;
       animation: screenPulse 1s infinite;
@@ -62,6 +61,11 @@
   
   <video id="trailerVideo" class="hidden" playsinline></video>
   
+  <!-- The Audio Elements -->
+  <audio id="tickSound" src="/tick.mp3" preload="auto"></audio>
+  <audio id="buzzSound" src="/buzz.mp3" preload="auto"></audio>
+  <audio id="loopSound" src="/loop.mp3" preload="auto" loop></audio>
+  
   <script src="/sync.js"></script>
   <script>
     const video = document.getElementById('trailerVideo');
@@ -75,6 +79,10 @@
     const videoFile = document.getElementById('videoFile');
     const armBtn = document.getElementById('armBtn');
     
+    const tickSound = document.getElementById('tickSound');
+    const buzzSound = document.getElementById('buzzSound');
+    const loopSound = document.getElementById('loopSound');
+    
     let currentState = null;
     let isArmed = false;
     let localBackup = false;
@@ -82,33 +90,31 @@
     let timerInterval = null;
     let videoIsPlaying = false;
     let lastBeepSecond = -1;
+    let isLoopPlaying = false;
 
-    // SOUND GENERATOR
-    let audioCtx = null;
     function playSound(type) {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain); gain.connect(audioCtx.destination);
+      if (type === 'tick' && tickSound) {
+        tickSound.currentTime = 0;
+        tickSound.play().catch(e => console.log('Audio blocked'));
+      } else if (type === 'buzz' && buzzSound) {
+        buzzSound.currentTime = 0;
+        buzzSound.play().catch(e => console.log('Audio blocked'));
+      }
+    }
 
-      if (type === 'tick') {
-        // A sharper, clock-like tick
-        osc.type = 'square'; 
-        osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.05);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.05);
-      } else if (type === 'boom') {
-        // Deep cinematic boom at zero
-        osc.type = 'sine'; 
-        osc.frequency.setValueAtTime(120, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 1.5);
-        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
-        osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+    function startLoop() {
+      if (loopSound && !isLoopPlaying) {
+        loopSound.currentTime = 0;
+        loopSound.play().catch(e => console.log('Audio blocked'));
+        isLoopPlaying = true;
+      }
+    }
+
+    function stopLoop() {
+      if (loopSound && isLoopPlaying) {
+        loopSound.pause();
+        loopSound.currentTime = 0;
+        isLoopPlaying = false;
       }
     }
 
@@ -120,10 +126,18 @@
     });
 
     armBtn.addEventListener('click', () => {
-      // Wake up the audio engine on click
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      
+      // Unlock audio context for all sounds
+      [tickSound, buzzSound, loopSound].forEach(s => {
+        if(s) {
+           s.volume = 0;
+           s.play().then(() => {
+               s.pause();
+               s.currentTime = 0;
+               s.volume = 1;
+           }).catch(()=>{});
+        }
+      });
+
       setupOverlay.classList.add('hidden');
       isArmed = true;
       if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
@@ -134,15 +148,18 @@
       connectSSE('screen', (s) => {
         if (videoIsPlaying) return; 
         currentState = s;
+        
         if (isArmed && !localBackup) {
           if (s.phase === 'running') {
             timerOverlay.classList.remove('hidden');
             video.classList.add('hidden'); video.pause();
+            startLoop(); // Start the background sound
             if (!timerInterval) startTimerLoop();
           } else {
             timerOverlay.classList.add('hidden');
             resetWarningStyles();
             video.classList.add('hidden'); video.pause();
+            stopLoop(); // Stop the background sound if canceled
           }
         }
       });
@@ -181,10 +198,10 @@
         boxM.classList.add('warning-box'); boxS.classList.add('warning-box');
         tM.classList.add('warning-text'); tS.classList.add('warning-text');
         
-        // Trigger the tick sound exactly when the second changes
+        // Play tick every second
         if (s !== lastBeepSecond) {
           lastBeepSecond = s;
-          playSound('tick');
+          playSound('tick'); 
         }
       } else {
         resetWarningStyles();
@@ -195,7 +212,7 @@
       timerOverlay.classList.remove('warning-pulse');
       boxM.classList.remove('warning-box'); boxS.classList.remove('warning-box');
       tM.classList.remove('warning-text'); tS.classList.remove('warning-text');
-      lastBeepSecond = -1; // Reset so the next countdown ticks correctly
+      lastBeepSecond = -1; 
     }
 
     function playTrailer() {
@@ -205,7 +222,8 @@
       if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       if (timerOverlay) timerOverlay.remove(); 
       
-      playSound('boom'); // Play final boom
+      stopLoop(); // Stop the background sound!
+      playSound('buzz'); // Play the final buzz sound!
       
       video.classList.remove('hidden'); video.style.display = 'block';
       video.play().catch(() => {
@@ -221,9 +239,11 @@
       if (videoIsPlaying) return; 
       if (e.key.toLowerCase() === 's' && isArmed) {
         localBackup = true; localTarget = Date.now() + 30000;
-        lastBeepSecond = -1; // Reset tick for local backup
+        lastBeepSecond = -1; 
         if (timerOverlay && document.body.contains(timerOverlay)) timerOverlay.classList.remove('hidden');
-        video.classList.add('hidden'); video.pause(); startTimerLoop();
+        video.classList.add('hidden'); video.pause(); 
+        startLoop(); // Start loop on local backup
+        startTimerLoop();
       }
       if (e.key.toLowerCase() === 'c') {
         localBackup = false; localTarget = null;
@@ -232,6 +252,7 @@
           resetWarningStyles();
         }
         video.classList.add('hidden'); video.pause();
+        stopLoop(); // Stop loop on cancel
       }
     });
   </script>
