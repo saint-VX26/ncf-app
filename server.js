@@ -4,7 +4,7 @@ const PORT=+process.env.PORT||3000;
 const PIN=process.env.OPERATOR_PIN||String(1000+crypto.randomInt(9000));
 const PUB=path.join(__dirname,'public');
 const PAGES={'/':'phone.html','/screen':'screen.html','/operator':'operator.html','/qr':'qr.html'};
-const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8'};
+const MIME={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.mp3':'audio/mpeg','.wav':'audio/wav','.ogg':'audio/ogg'};
 let state={phase:'idle',target:null,seq:0};
 const clients=new Set();
 const counts=()=>{const c={phone:0,screen:0,operator:0};for(const k of clients)c[k.role]++;return c};
