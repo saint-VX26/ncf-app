@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Church Screen</title><link rel="stylesheet" href="/style.css">
+  <style>
+    body { cursor: none; background: black; overflow: hidden; }
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+    video { width: 100vw; height: 100vh; object-fit: contain; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div id="setupOverlay" class="overlay">
+    <h1>Screen Setup</h1>
+    <input type="file" id="videoFile" accept="video/*" style="margin: 1rem; color: white; padding: 10px; background: #333; border-radius: 5px;">
+    <button id="armBtn" class="btn btn-green" disabled>Arm the screen</button>
+    <p style="color: #aaa; margin-top: 10px;">Press <b>S</b> for local 30s backup countdown.</p>
+  </div>
+  <div id="timerOverlay" class="overlay hidden">
+    <h1 id="screenStatus">Get Ready</h1>
+    <div id="timer" class="timer">0:00</div>
+  </div>
+  <div class="video-container"><video id="trailerVideo" class="hidden" playsinline></video></div>
+  
+  <script src="/sync.js"></script>
+  <script>
+    const video = document.getElementById('trailerVideo');
+    const setupOverlay = document.getElementById('setupOverlay');
+    const timerOverlay = document.getElementById('timerOverlay');
+    const timerEl = document.getElementById('timer');
+    const screenStatus = document.getElementById('screenStatus');
+    const videoFile = document.getElementById('videoFile');
+    const armBtn = document.getElementById('armBtn');
+    
+    let currentState = null;
+    let isArmed = false;
+    let localBackup = false;
+    let localTarget = null;
+
+    videoFile.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        video.src = URL.createObjectURL(e.target.files[0]);
+        video.load();
+        armBtn.disabled = false;
+      }
+    });
+
+    armBtn.addEventListener('click', () => {
+      setupOverlay.classList.add('hidden');
+      isArmed = true;
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(()=>{});
+      }
+    });
+
+    syncClock().then(() => {
+      connectSSE('screen', (s) => {
+        currentState = s;
+        if (isArmed && !localBackup) {
+          if (s.phase === 'running') {
+            timerOverlay.classList.remove('hidden');
+            video.classList.add('hidden');
+            video.pause();
+          } else {
+            timerOverlay.classList.add('hidden');
+            video.classList.add('hidden');
+            video.pause();
+          }
+        }
+      });
+    });
+
+    setInterval(() => {
+      if (!isArmed) return;
+
+      if (localBackup && localTarget) {
+        const remaining = localTarget - Date.now();
+        if (remaining <= 0) {
+          playTrailer();
+          localBackup = false;
+          localTarget = null;
+        } else {
+          timerEl.textContent = formatTime(remaining);
+        }
+        return;
+      }
+
+      if (currentState && currentState.phase === 'running') {
+        const remaining = currentState.target - getServerNow();
+        if (remaining <= 0) {
+          playTrailer();
+        } else {
+          timerEl.textContent = formatTime(remaining);
+        }
+      }
+    }, 100);
+
+    function playTrailer() {
+      if (!video.classList.contains('hidden')) return;
+      timerOverlay.classList.add('hidden');
+      video.classList.remove('hidden');
+      video.play().catch(() => {
+        screenStatus.textContent = "Click anywhere to play!";
+        timerOverlay.classList.remove('hidden');
+        timerEl.classList.add('hidden');
+        document.addEventListener('click', () => { video.play(); }, { once: true });
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 's' && isArmed) {
+        localBackup = true;
+        localTarget = Date.now() + 30000;
+        timerOverlay.classList.remove('hidden');
+        video.classList.add('hidden');
+        video.pause();
+      }
+      if (e.key.toLowerCase() === 'c') {
+        localBackup = false;
+        localTarget = null;
+        timerOverlay.classList.add('hidden');
+        video.classList.add('hidden');
+        video.pause();
+      }
+    });
+  </script>
+</body>
+</html>
