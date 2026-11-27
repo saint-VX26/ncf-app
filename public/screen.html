@@ -6,6 +6,7 @@
   <style>
     body { cursor: none; background: #000; overflow: hidden; margin: 0; }
     
+    /* Force video to cover everything else */
     video { 
       width: 100vw; 
       height: 100vh; 
@@ -63,7 +64,7 @@
     let isArmed = false;
     let localBackup = false;
     let localTarget = null;
-    let timerInterval = null; // <-- NEW: Keep track of the interval
+    let timerInterval = null;
 
     videoFile.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
@@ -79,7 +80,7 @@
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(()=>{});
       }
-      startTimerLoop(); // <-- Start the loop here
+      startTimerLoop();
     });
 
     syncClock().then(() => {
@@ -91,7 +92,7 @@
             timerOverlay.style.display = 'flex';
             video.classList.add('hidden');
             video.pause();
-            if (!timerInterval) startTimerLoop(); // Restart loop if it was stopped
+            if (!timerInterval) startTimerLoop();
           } else {
             timerOverlay.classList.add('hidden');
             video.classList.add('hidden');
@@ -120,10 +121,15 @@
 
         if (currentState && currentState.phase === 'running') {
           const remaining = currentState.target - getServerNow();
+          
           if (remaining <= 0) {
             playTrailer();
           } else if (video.classList.contains('hidden')) {
-            timerEl.textContent = formatTime(remaining);
+            if (remaining < 1000) {
+              timerEl.textContent = '0:00';
+            } else {
+              timerEl.textContent = formatTime(remaining);
+            }
           }
         }
       }, 100);
