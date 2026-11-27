@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NCF Countdown</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>He Walked Where I Walk</h1>
+    <div id="statusText">Waiting for the countdown to start...</div>
+    <div id="timer" class="timer hidden">0:00</div>
+    <div id="playNotice" class="hidden" style="margin-top: 20px;">
+      <h2 style="color: var(--gold); font-size: 1.5rem;">Look at the big screen now!</h2>
+    </div>
+  </div>
+  <script src="/sync.js"></script>
+  <script>
+    const timerEl = document.getElementById('timer');
+    const statusEl = document.getElementById('statusText');
+    const noticeEl = document.getElementById('playNotice');
+    let currentState = null;
+
+    syncClock().then(() => {
+      connectSSE('phone', (s) => {
+        currentState = s;
+        if (s.phase === 'running') {
+          timerEl.classList.remove('hidden');
+          statusEl.classList.add('hidden');
+          noticeEl.classList.add('hidden');
+        } else {
+          timerEl.classList.add('hidden');
+          statusEl.classList.remove('hidden');
+          noticeEl.classList.add('hidden');
+        }
+      });
+    });
+
+    setInterval(() => {
+      if (currentState && currentState.phase === 'running') {
+        const remaining = currentState.target - getServerNow();
+        if (remaining <= 0) {
+          timerEl.classList.add('hidden');
+          noticeEl.classList.remove('hidden');
+        } else {
+          timerEl.textContent = formatTime(remaining);
+          if (remaining < 10000) timerEl.classList.add('danger');
+          else timerEl.classList.remove('danger');
+        }
+      }
+    }, 100);
+  </script>
+</body>
+</html>
