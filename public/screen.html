@@ -86,11 +86,11 @@
         return;
       }
 
-      if (currentState && currentState.phase === 'running') {
+            if (currentState && currentState.phase === 'running') {
         const remaining = currentState.target - getServerNow();
         if (remaining <= 0) {
           playTrailer();
-        } else {
+        } else if (video.classList.contains('hidden')) { // <-- ADD THIS LINE
           timerEl.textContent = formatTime(remaining);
         }
       }
