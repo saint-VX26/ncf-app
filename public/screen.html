@@ -18,6 +18,23 @@
       display: flex; flex-direction: column; align-items: center; justify-content: center; 
       z-index: 10; transition: background 0.3s;
     }
+    
+    /* Make the red pulse slightly quicker to match the ticking */
+    .warning-pulse {
+      background: rgba(150, 0, 0, 0.5) !important;
+      animation: screenPulse 1s infinite;
+    }
+
+    @keyframes screenPulse {
+      0% { background: rgba(0,0,0,0.85); }
+      10% { background: rgba(180, 20, 20, 0.6); }
+      100% { background: rgba(0,0,0,0.85); }
+    }
+
+    .warning-text { color: #ef4444 !important; text-shadow: 0 0 30px rgba(239, 68, 68, 0.8) !important; }
+    .warning-box { border-color: #ef4444 !important; box-shadow: 0 0 30px rgba(239, 68, 68, 0.5) !important; }
+    
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -77,16 +94,21 @@
       osc.connect(gain); gain.connect(audioCtx.destination);
 
       if (type === 'tick') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        // A sharper, clock-like tick
+        osc.type = 'square'; 
+        osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.05);
       } else if (type === 'boom') {
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 1);
-        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
-        osc.start(); osc.stop(audioCtx.currentTime + 1);
+        // Deep cinematic boom at zero
+        osc.type = 'sine'; 
+        osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 1.5);
+        gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+        osc.start(); osc.stop(audioCtx.currentTime + 1.5);
       }
     }
 
@@ -98,7 +120,10 @@
     });
 
     armBtn.addEventListener('click', () => {
+      // Wake up the audio engine on click
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      
       setupOverlay.classList.add('hidden');
       isArmed = true;
       if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
@@ -116,9 +141,7 @@
             if (!timerInterval) startTimerLoop();
           } else {
             timerOverlay.classList.add('hidden');
-            timerOverlay.classList.remove('warning-pulse');
-            boxM.classList.remove('warning-box'); boxS.classList.remove('warning-box');
-            tM.classList.remove('warning-text'); tS.classList.remove('warning-text');
+            resetWarningStyles();
             video.classList.add('hidden'); video.pause();
           }
         }
@@ -158,24 +181,31 @@
         boxM.classList.add('warning-box'); boxS.classList.add('warning-box');
         tM.classList.add('warning-text'); tS.classList.add('warning-text');
         
-        const currentSecond = Math.ceil(remaining / 1000);
-        if (currentSecond !== lastBeepSecond) {
-          lastBeepSecond = currentSecond;
+        // Trigger the tick sound exactly when the second changes
+        if (s !== lastBeepSecond) {
+          lastBeepSecond = s;
           playSound('tick');
         }
       } else {
-        timerOverlay.classList.remove('warning-pulse');
-        boxM.classList.remove('warning-box'); boxS.classList.remove('warning-box');
-        tM.classList.remove('warning-text'); tS.classList.remove('warning-text');
+        resetWarningStyles();
       }
+    }
+
+    function resetWarningStyles() {
+      timerOverlay.classList.remove('warning-pulse');
+      boxM.classList.remove('warning-box'); boxS.classList.remove('warning-box');
+      tM.classList.remove('warning-text'); tS.classList.remove('warning-text');
+      lastBeepSecond = -1; // Reset so the next countdown ticks correctly
     }
 
     function playTrailer() {
       if (videoIsPlaying) return;
       videoIsPlaying = true;
+      
       if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       if (timerOverlay) timerOverlay.remove(); 
-      playSound('boom');
+      
+      playSound('boom'); // Play final boom
       
       video.classList.remove('hidden'); video.style.display = 'block';
       video.play().catch(() => {
@@ -191,6 +221,7 @@
       if (videoIsPlaying) return; 
       if (e.key.toLowerCase() === 's' && isArmed) {
         localBackup = true; localTarget = Date.now() + 30000;
+        lastBeepSecond = -1; // Reset tick for local backup
         if (timerOverlay && document.body.contains(timerOverlay)) timerOverlay.classList.remove('hidden');
         video.classList.add('hidden'); video.pause(); startTimerLoop();
       }
@@ -198,9 +229,7 @@
         localBackup = false; localTarget = null;
         if (timerOverlay && document.body.contains(timerOverlay)) {
           timerOverlay.classList.add('hidden');
-          timerOverlay.classList.remove('warning-pulse');
-          boxM.classList.remove('warning-box'); boxS.classList.remove('warning-box');
-          tM.classList.remove('warning-text'); tS.classList.remove('warning-text');
+          resetWarningStyles();
         }
         video.classList.add('hidden'); video.pause();
       }
