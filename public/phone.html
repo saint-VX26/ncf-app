@@ -3,14 +3,6 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NCF Countdown</title><link rel="stylesheet" href="/style.css">
-  <style>
-    /* Phone screen pulse */
-    .warning-bg {
-      background-color: rgba(150, 0, 0, 0.4) !important;
-      transition: background-color 0.3s;
-    }
-    .warning-text { color: #ef4444 !important; }
-  </style>
 </head>
 <body id="phoneBody">
   <div class="container">
@@ -21,10 +13,14 @@
     
     <div id="timerWrapper" class="hidden">
       <div class="timer-grid">
-        <div class="time-box"><div id="t-d" class="time-num">00</div><div class="time-label">Days</div></div>
-        <div class="time-box"><div id="t-h" class="time-num">00</div><div class="time-label">Hours</div></div>
-        <div class="time-box"><div id="t-m" class="time-num">00</div><div class="time-label">Mins</div></div>
-        <div class="time-box"><div id="t-s" class="time-num">00</div><div class="time-label">Secs</div></div>
+        <div id="box-m" class="time-box">
+          <div id="t-m" class="time-num">00</div>
+          <div class="time-label">Minutes</div>
+        </div>
+        <div id="box-s" class="time-box">
+          <div id="t-s" class="time-num">00</div>
+          <div class="time-label">Seconds</div>
+        </div>
       </div>
     </div>
 
@@ -36,12 +32,11 @@
   
   <script src="/sync.js"></script>
   <script>
-    const phoneBody = document.getElementById('phoneBody');
     const timerWrapper = document.getElementById('timerWrapper');
     const statusEl = document.getElementById('statusText');
     const noticeEl = document.getElementById('playNotice');
-    const tD = document.getElementById('t-d');
-    const tH = document.getElementById('t-h');
+    const boxM = document.getElementById('box-m');
+    const boxS = document.getElementById('box-s');
     const tM = document.getElementById('t-m');
     const tS = document.getElementById('t-s');
     let currentState = null;
@@ -57,7 +52,6 @@
           timerWrapper.classList.add('hidden');
           statusEl.classList.remove('hidden');
           noticeEl.classList.add('hidden');
-          phoneBody.classList.remove('warning-bg');
         }
       });
     });
@@ -68,25 +62,20 @@
         if (remaining <= 0) {
           timerWrapper.classList.add('hidden');
           noticeEl.classList.remove('hidden');
-          phoneBody.classList.remove('warning-bg');
         } else {
           const totalSecs = Math.ceil(remaining / 1000);
-          const d = Math.floor(totalSecs / 86400);
-          const h = Math.floor((totalSecs % 86400) / 3600);
-          const m = Math.floor((totalSecs % 3600) / 60);
+          const m = Math.floor(totalSecs / 60);
           const s = totalSecs % 60;
           
-          tD.textContent = String(d).padStart(2, '0');
-          tH.textContent = String(h).padStart(2, '0');
           tM.textContent = String(m).padStart(2, '0');
           tS.textContent = String(s).padStart(2, '0');
           
           if (remaining < 10000) {
-             phoneBody.classList.add('warning-bg');
-             [tD, tH, tM, tS].forEach(el => el.classList.add('warning-text'));
+             boxM.classList.add('warning-box'); boxS.classList.add('warning-box');
+             tM.classList.add('warning-text'); tS.classList.add('warning-text');
           } else {
-             phoneBody.classList.remove('warning-bg');
-             [tD, tH, tM, tS].forEach(el => el.classList.remove('warning-text'));
+             boxM.classList.remove('warning-box'); boxS.classList.remove('warning-box');
+             tM.classList.remove('warning-text'); tS.classList.remove('warning-text');
           }
         }
       }
