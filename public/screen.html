@@ -88,8 +88,11 @@
         currentState = s;
         if (isArmed && !localBackup) {
           if (s.phase === 'running') {
-            timerOverlay.classList.remove('hidden');
-            timerOverlay.style.display = 'flex';
+            // Only show the timer if the video hasn't started
+            if (video.classList.contains('hidden')) {
+              timerOverlay.classList.remove('hidden');
+              timerOverlay.style.display = 'flex';
+            }
             video.classList.add('hidden');
             video.pause();
             if (!timerInterval) startTimerLoop();
@@ -138,29 +141,31 @@
     function playTrailer() {
       if (!video.classList.contains('hidden')) return;
       
-      // 1. Kill the timer loop completely so it cannot repaint
+      // 1. Kill the timer loop completely
       if (timerInterval) {
         clearInterval(timerInterval);
         timerInterval = null;
       }
 
-      // 2. Hide the overlay completely
-      timerOverlay.classList.add('hidden');
-      timerOverlay.style.display = 'none'; 
+      // 2. DESTROY the timer overlay from the page forever
+      if (timerOverlay) {
+        timerOverlay.remove(); 
+      }
       
       // 3. Show the video
       video.classList.remove('hidden');
       video.style.display = 'block';
       
       video.play().catch(() => {
-        screenStatus.textContent = "Click anywhere to play!";
-        timerEl.classList.add('hidden');
-        timerOverlay.classList.remove('hidden');
-        timerOverlay.style.display = 'flex';
+        // If autoplay is blocked by the browser, show a generic click prompt
+        const prompt = document.createElement('div');
+        prompt.className = 'overlay';
+        prompt.innerHTML = '<h1 style="color: white; z-index: 100; position: absolute;">Click anywhere to play!</h1>';
+        document.body.appendChild(prompt);
         
         document.addEventListener('click', () => { 
           video.play(); 
-          timerOverlay.style.display = 'none';
+          prompt.remove();
         }, { once: true });
       });
     }
@@ -169,8 +174,11 @@
       if (e.key.toLowerCase() === 's' && isArmed) {
         localBackup = true;
         localTarget = Date.now() + 30000;
-        timerOverlay.classList.remove('hidden');
-        timerOverlay.style.display = 'flex';
+        // Only show timer if it hasn't been destroyed
+        if (timerOverlay && document.body.contains(timerOverlay)) {
+          timerOverlay.classList.remove('hidden');
+          timerOverlay.style.display = 'flex';
+        }
         video.classList.add('hidden');
         video.pause();
         startTimerLoop();
@@ -178,7 +186,9 @@
       if (e.key.toLowerCase() === 'c') {
         localBackup = false;
         localTarget = null;
-        timerOverlay.classList.add('hidden');
+        if (timerOverlay && document.body.contains(timerOverlay)) {
+          timerOverlay.classList.add('hidden');
+        }
         video.classList.add('hidden');
         video.pause();
       }
