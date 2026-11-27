@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan to join</title><link rel="stylesheet" href="/style.css">
+  <style>.qr-box { background: white; padding: 2rem; display: inline-block; margin: 2rem; border-radius: 12px; }</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Scan to join the countdown</h1>
+    <div class="qr-box"><img id="qrImage" src="" alt="QR"></div>
+    <p id="urlText" style="color: var(--gold);"></p>
+    <button class="btn" onclick="window.print()" style="margin-top: 20px;">Print Poster</button>
+  </div>
+  <script>
+    async function loadQR() {
+      const res = await fetch('/api/info');
+      const data = await res.json();
+      const url = data.join;
+      document.getElementById('urlText').textContent = url;
+      
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+      script.onload = () => {
+        const qr = qrcode(0, 'M');
+        qr.addData(url); qr.make();
+        document.getElementById('qrImage').src = qr.createDataURL(8, 4);
+      };
+      document.head.appendChild(script);
+    }
+    loadQR();
+  </script>
+</body>
+</html>
