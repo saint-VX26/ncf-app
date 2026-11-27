@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Operator Panel</title><link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Operator Panel</h1>
+    <div id="authSection">
+      <input type="password" id="pinInput" placeholder="Enter PIN" style="padding: 1rem; font-size: 1.5rem; width: 200px; text-align: center; margin-bottom: 10px;">
+      <br><button class="btn" onclick="login()">Login</button>
+      <p id="errorMsg" style="color: #ef4444; margin-top: 10px;"></p>
+    </div>
+    <div id="controlSection" class="hidden">
+      <p>Status: <b id="statusText">Idle</b></p>
+      <p>Phones waiting: <b id="phoneCount">0</b></p>
+      <p>Screen: <b id="screenReady">Not Ready</b></p>
+      <p>Timer: <b id="timerDisplay" style="font-size: 1.5rem; color: var(--gold);">--:--</b></p>
+      
+      <div style="margin: 2rem 0;">
+        <label>Start Length (minutes): </label>
+        <input type="number" id="startMins" value="2" step="0.5" min="0.1" style="padding: 0.5rem; font-size: 1.2rem; width: 80px; text-align: center; border-radius: 5px; border: 1px solid #ccc;">
+      </div>
+      
+      <button class="btn btn-green" onclick="apiPost('start', {seconds: parseFloat(document.getElementById('startMins').value) * 60})">Start</button>
+      <button class="btn" onclick="apiPost('cancel', {})" style="background: #ef4444;">Cancel</button>
+      <br><br>
+      <button class="btn" onclick="apiPost('adjust', {seconds: 30})">+30s</button>
+      <button class="btn" onclick="apiPost('adjust', {seconds: -30})">-30s</button>
+    </div>
+  </div>
+  <script src="/sync.js"></script>
+  <script>
+    let savedPin = '';
+    let currentState = null;
+    
+    async function login() {
+      savedPin = document.getElementById('pinInput').value;
+      const res = await fetch('/api/check', { method: 'POST', headers: { 'x-pin': savedPin } });
+      if (res.ok) {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('controlSection').classList.remove('hidden');
+        syncClock().then(() => connectSSE('operator', updateUI));
+      } else {
+        document.getElementById('errorMsg').textContent = 'Wrong PIN';
+      }
+    }
+
+    async function apiPost(endpoint, body) {
+      const res = await fetch('/api/' + endpoint, {
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-pin': savedPin },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Error');
+      }
+    }
+
+    function updateUI(s) {
+      currentState = s;
+      document.getElementById('phoneCount').textContent = s.counts ? s.counts.phone : 0;
+      document.getElementById('screenReady').textContent = (s.counts && s.counts.screen > 0) ? 'Ready' : 'Not Ready';
+      document.getElementById('statusText').textContent = s.phase === 'running' ? 'Running' : 'Idle';
+    }
+
+    setInterval(() => {
+      if (currentState && currentState.phase === 'running') {
+        document.getElementById('timerDisplay').textContent = formatTime(currentState.target - getServerNow());
+      }
+    }, 100);
+  </script>
+</body>
+</html>
