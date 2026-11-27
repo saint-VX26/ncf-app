@@ -61,7 +61,7 @@
   
   <video id="trailerVideo" class="hidden" playsinline></video>
   
-  <!-- The Audio Elements -->
+  <!-- Audio Elements -->
   <audio id="tickSound" src="/tick.mp3" preload="auto"></audio>
   <audio id="buzzSound" src="/buzz.mp3" preload="auto"></audio>
   <audio id="loopSound" src="/loop.mp3" preload="auto" loop></audio>
@@ -92,6 +92,7 @@
     let lastBeepSecond = -1;
     let isLoopPlaying = false;
 
+    // Play a single sound
     function playSound(type) {
       if (type === 'tick' && tickSound) {
         tickSound.currentTime = 0;
@@ -102,6 +103,7 @@
       }
     }
 
+    // Start the background loop sound
     function startLoop() {
       if (loopSound && !isLoopPlaying) {
         loopSound.currentTime = 0;
@@ -110,12 +112,21 @@
       }
     }
 
+    // Stop the background loop sound
     function stopLoop() {
       if (loopSound && isLoopPlaying) {
         loopSound.pause();
         loopSound.currentTime = 0;
         isLoopPlaying = false;
       }
+    }
+
+    // Stop EVERYTHING (used when video plays)
+    function stopAllSounds() {
+      if (tickSound) { tickSound.pause(); tickSound.currentTime = 0; }
+      if (buzzSound) { buzzSound.pause(); buzzSound.currentTime = 0; }
+      if (loopSound) { loopSound.pause(); loopSound.currentTime = 0; }
+      isLoopPlaying = false;
     }
 
     videoFile.addEventListener('change', (e) => {
@@ -126,7 +137,7 @@
     });
 
     armBtn.addEventListener('click', () => {
-      // Unlock audio context for all sounds
+      // Unlock audio context
       [tickSound, buzzSound, loopSound].forEach(s => {
         if(s) {
            s.volume = 0;
@@ -153,13 +164,13 @@
           if (s.phase === 'running') {
             timerOverlay.classList.remove('hidden');
             video.classList.add('hidden'); video.pause();
-            startLoop(); // Start the background sound
+            startLoop(); // Start the loop when countdown starts
             if (!timerInterval) startTimerLoop();
           } else {
             timerOverlay.classList.add('hidden');
             resetWarningStyles();
             video.classList.add('hidden'); video.pause();
-            stopLoop(); // Stop the background sound if canceled
+            stopLoop(); // Stop the loop if canceled
           }
         }
       });
@@ -194,11 +205,12 @@
       tS.textContent = String(s).padStart(2, '0');
 
       if (remaining <= 10000 && remaining > 0) {
+        // Final 10 seconds: Stop loop, start red visual pulse and tick sound
+        stopLoop(); 
         timerOverlay.classList.add('warning-pulse');
         boxM.classList.add('warning-box'); boxS.classList.add('warning-box');
         tM.classList.add('warning-text'); tS.classList.add('warning-text');
         
-        // Play tick every second
         if (s !== lastBeepSecond) {
           lastBeepSecond = s;
           playSound('tick'); 
@@ -222,8 +234,8 @@
       if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       if (timerOverlay) timerOverlay.remove(); 
       
-      stopLoop(); // Stop the background sound!
-      playSound('buzz'); // Play the final buzz sound!
+      stopAllSounds(); // STOP EVERYTHING
+      playSound('buzz'); // Play only the final buzz
       
       video.classList.remove('hidden'); video.style.display = 'block';
       video.play().catch(() => {
@@ -242,7 +254,7 @@
         lastBeepSecond = -1; 
         if (timerOverlay && document.body.contains(timerOverlay)) timerOverlay.classList.remove('hidden');
         video.classList.add('hidden'); video.pause(); 
-        startLoop(); // Start loop on local backup
+        startLoop(); 
         startTimerLoop();
       }
       if (e.key.toLowerCase() === 'c') {
@@ -252,7 +264,7 @@
           resetWarningStyles();
         }
         video.classList.add('hidden'); video.pause();
-        stopLoop(); // Stop loop on cancel
+        stopAllSounds(); 
       }
     });
   </script>
