@@ -1,0 +1,28 @@
+:root {
+  --bg: #0f172a; --text: #f8fafc; --gold: #eab308; --red: #ef4444; --green: #22c55e;
+}
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; text-align: center;
+}
+h1, h2 { color: var(--gold); }
+.timer {
+  font-size: 6rem; color: var(--gold); margin: 1rem 0; font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+.timer.danger { color: var(--red); animation: pulse 1s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.btn {
+  background: var(--gold); color: #1a1305; border: none;
+  padding: 1rem 2rem; font-size: 1.2rem; font-weight: bold;
+  border-radius: 8px; cursor: pointer; margin: 0.5rem; transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.8; }
+.btn-green { background: var(--green); color: white; }
+.container {
+  background: rgba(255, 255, 255, 0.05); padding: 2rem; border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1); max-width: 800px; width: 90%;
+}
+.hidden { display: none !important; }
