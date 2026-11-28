@@ -9,12 +9,14 @@
     body {
       background-color: #0a0505;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
       margin: 0;
     }
 
+    /* The bordered box */
     .qr-container { 
       background: white; 
       padding: 2rem; 
@@ -29,20 +31,15 @@
       display: block;
     }
 
-    .btn {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
+    /* Print settings */
     @media print {
       body { 
         background: white !important; 
       }
       .qr-container { 
-        border: 2px solid black; 
+        border: 4px solid black; 
         box-shadow: none;
+        padding: 1rem;
       }
       .no-print { 
         display: none !important; 
@@ -52,13 +49,13 @@
 </head>
 <body>
   
-  <!-- Just the QR code and its border -->
+  <!-- The QR Code inside its box -->
   <div class="qr-container">
     <img id="qrImage" src="" alt="QR Code">
   </div>
 
-  <!-- The button disappears when you print -->
-  <button class="btn btn-green no-print" onclick="window.print()">
+  <!-- The print button (disappears when printed) -->
+  <button class="btn btn-green no-print" onclick="window.print()" style="margin-top: 30px; padding: 1rem 3rem; font-size: 1.2rem;">
     PRINT POSTER
   </button>
 
