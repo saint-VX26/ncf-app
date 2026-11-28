@@ -3,14 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NCF Carol - Scan to join</title>
+  <title>Scan to join</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel+Decorative:wght@700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <style>
     .qr-container { background: white; padding: 2rem; border-radius: 12px; display: inline-block; margin: 2rem; }
     .qr-container img { width: 300px; height: 300px; }
+    
     @media print {
-      body { background: white; color: black; }
+      /* Set the page header and footer to empty to remove the date/time */
+      @page { margin: 0; size: auto; }
+      body { background: white; color: black; margin: 1cm; }
       .no-print { display: none; }
       .qr-container { border: 2px solid black; }
       h1, h2 { color: black; }
