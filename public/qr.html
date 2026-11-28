@@ -1,37 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NCF Carol - Scan to join</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel+Decorative:wght@700&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
-  <style>
-    .qr-container { background: white; padding: 2rem; border-radius: 12px; display: inline-block; margin: 2rem; }
-    .qr-container img { width: 300px; height: 300px; }
-    @media print {
-      body { background: white; color: black; }
-      .no-print { display: none; }
-      .qr-container { border: 2px solid black; }
-      h1, h2 { color: black; }
-    }
-  </style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan to join</title><link rel="stylesheet" href="/style.css">
+  <style>.qr-box { background: white; padding: 2rem; display: inline-block; margin: 2rem; border-radius: 12px; }</style>
 </head>
 <body>
   <div class="container">
-    <h1>He Walked Where I Walk</h1>
-    <h2>NCF Carol Sunday</h2>
-    
-    <div class="qr-container">
-      <img id="qrImage" src="" alt="QR Code">
-    </div>
-
-    <h2 class="no-print">Scan to join the countdown!</h2>
-    <p class="no-print" id="urlText" style="color: var(--gold);"></p>
-    
-    <button class="btn no-print" onclick="window.print()">Print Poster</button>
+    <h1>Scan to join the countdown</h1>
+    <div class="qr-box"><img id="qrImage" src="" alt="QR"></div>
+    <p id="urlText" style="color: var(--gold);"></p>
+    <button class="btn" onclick="window.print()" style="margin-top: 20px;">Print Poster</button>
   </div>
-
   <script>
     async function loadQR() {
       const res = await fetch('/api/info');
@@ -39,16 +19,14 @@
       const url = data.join;
       document.getElementById('urlText').textContent = url;
       
-      // Use an inline QR generator to avoid CDN dependency
-      const qrScript = document.createElement('script');
-      qrScript.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
-      qrScript.onload = () => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+      script.onload = () => {
         const qr = qrcode(0, 'M');
-        qr.addData(url);
-        qr.make();
+        qr.addData(url); qr.make();
         document.getElementById('qrImage').src = qr.createDataURL(8, 4);
       };
-      document.head.appendChild(qrScript);
+      document.head.appendChild(script);
     }
     loadQR();
   </script>
